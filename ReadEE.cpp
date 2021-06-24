@@ -7,10 +7,13 @@
 extern void SetPoortA_outputs();
 extern void SetPoortA_inputs();
 extern int  readLine(char * , int );
+extern bool  Mode_uvprom ; 
 
 
 byte readValue (int adr);
 void do_Read() ;
+void do_Dump();
+unsigned int Pcourant       = 0;
 
 //**************************READ XXX octets à l'adresse add********************
 void do_Read(char *cmd)    
@@ -24,14 +27,52 @@ void do_Read(char *cmd)
    // szline =  readLine(Line, sizeof(Line) - 1);
 
     DP("line=",cmd);
-    pc = strtok (&cmd[1],":");  // on échappe le "R"
-    nbp =strtol(pc,NULL,10);    // nombre de page pour le dump 
-    if (nbp == 0) nbp++;        // au moins une page
-    pc = strtok(NULL,":");
-    Addr = strtol(pc,NULL,16); 
+  //  pc = strtok (&cmd[1],":");  // on échappe le "R"
+  //  nbp =strtol(pc,NULL,10);    // nombre de page pour le dump 
+  //  if (nbp == 0) nbp++;        // au moins une page
+  //  pc = strtok(NULL,":");
+  //  Addr = strtol(pc,NULL,16); 
+    Addr = strtol(&cmd[1],NULL,16); 
     Addr = Addr & 0xFF00;       // on commence en début d'une page 
+    Pcourant = Addr; // + nbp * 0x100;
 
-    sprintf(Bufout,"nb page=%d nbp Adresse =0x%04X   ",nbp, Addr); PRLN(Bufout); 
+  //  sprintf(Bufout,"nb page=%d nbp Adresse =0x%04X   ",nbp, Addr); PRLN(Bufout); 
+    SetPoortA_inputs();
+    
+    for (iz=0;iz<1;iz++)  // 1 seule page
+    {
+        for (ix=0; ix<16 ;ix++)       //page
+        {
+            sprintf(Bufout," %04X   ",Addr + (iz*256) + (ix*16)); PR(Bufout);   
+            for (iy=0; iy<16; iy++)         // ligne
+                {
+                Data = readValue(Addr + (iz*256) + (ix*16) + iy);
+                sprintf(Bufout,"%02X ",Data); PR(Bufout);
+                }
+            PRLN(" ");
+        }
+        PRLN(" ");
+    }
+}
+
+
+//===============================================================================
+//**************************READ XXX octets à l'adresse add********************
+void do_Dump(void)    
+{
+    char * pc = NULL;
+    unsigned int Addr=0, Data=0 , nbp=0, ix=0, iy=0, iz=0;
+ //   char Line[32];
+    char Bufout[128];
+   
+   // memset(Line,0,sizeof(Line));
+   // szline =  readLine(Line, sizeof(Line) - 1);
+
+    nbp = 1;
+    Addr = Pcourant;
+    Pcourant = Addr +  0x100;  // pour le coup d'apres 
+
+    sprintf(Bufout,"1 page= Adresse =0x%04X   ", Addr); PRLN(Bufout); 
     SetPoortA_inputs();
     for (iz=0;iz<nbp;iz++)  // numero de page
     {

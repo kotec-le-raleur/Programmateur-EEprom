@@ -14,7 +14,9 @@ extern unsigned int Offset;
 void writeValue (int adr, byte val) ;               //avec delai de 8 ms
 void writeValueEx (int adr, byte val) ;
 void do_Flash() ;
-
+void do_FlashEx() ;
+void do_Unprotect() ;
+void do_Unprotect_2() ;
 
 //*******************************************
 //************   do_flash   *****************
@@ -41,14 +43,16 @@ void do_Flash(char * cmd)
  	err = sscanf(cmd + 1, "%2X", &nbo);
 	err = sscanf(cmd + 3, "%4X", &Addr);
 	err = sscanf(cmd + 7, "%2X", &rectype);
-	DX(" nbo=",nbo);  DX("Addr=",Addr);  DX("type=",rectype);
-  
-
+ 
 	 if ((nbo == 0) || (rectype != 0))
 	 {
-     PRLN("erreur ou fin de fichier");
+     PRLN("fin de fichier");
 	 	return ;
 	 }
+//	DX("Nb byte=",nbo);  
+//  DX("Adresse=",Addr);   
+  DX(" Eeprom=",Addr+Offset); 
+ // DX("   Type=",rectype);
 	 for (i = 0; i < nbo; i++)
 	 {
 	 	err = sscanf(cmd + 9 + (2 * i), "%2X", &Data);
@@ -56,13 +60,49 @@ void do_Flash(char * cmd)
 	 }
    //delay(10);  // necessaire pour finir le writeValueEx
  	// sortie quand c'est fini !
-    DP("temps=", millis()-Tp1);
-    DP("Fin de process ","Flash OK");
+   // DP("  Temps=", millis()-Tp1);
+   // DP("  Ligne: ","Flash OK");
     return;
 	
 }
 //===============================================================================
 
+void do_FlashEx(char * cmd)    
+{
+  unsigned int Addr=0, Data=0  ;
+  int err=0, rectype=0, nbo=0, i=0;
+  unsigned long Tp1;
+
+  Tp1 = millis();
+ 
+  PRLN(cmd);
+ 
+ 	err = sscanf(cmd + 1, "%2X", &nbo);
+	err = sscanf(cmd + 3, "%4X", &Addr);
+	err = sscanf(cmd + 7, "%2X", &rectype);
+ 
+	 if ((nbo == 0) || (rectype != 0))
+	 {
+     PRLN("fin de fichier");
+	 	return ;
+	 }
+//	DX("Nb byte=",nbo);  
+//  DX("Adresse=",Addr);   
+  DX(" Eeprom=",Addr+Offset); 
+ // DX("   Type=",rectype);
+	 for (i = 0; i < nbo; i++)
+	 {
+	 	err = sscanf(cmd + 9 + (2 * i), "%2X", &Data);
+    writeValueEx (Addr+i + Offset, Data) ;        // flashage effectif
+	 }
+   delay(10);  // necessaire pour finir le writeValueEx
+ 	// sortie quand c'est fini !
+    DP("  Temps=", millis()-Tp1);
+   // DP("  Ligne: ","Flash OK");
+    return;
+	
+}
+//===============================================================================
 
 
 
@@ -104,10 +144,10 @@ void writeValueEx (int adr, byte val) {
  
   PORTC = lowByte(adr); // lower byte of the address (first 8 bits)
   PORTL = highByte(adr); // upper byte of the addr(only 7 bits are used, the addr is a 15 bit number for 32K)
-  delayMicroseconds(10);
+  PORTA = val;  // this is the DATA
+  delayMicroseconds(1);
   SET_CE_LOW;             //  |CE goes LOW  // Chip enable
   SET_WE_LOW;             //  |WE goes LOW  // Write enable
-  PORTA = val;  // this is the DATA
   delayMicroseconds(1);   //   a ajuster au scope/analyseur logique
   SET_WE_HIGH;            //  |WE goes HIGH // Write disable
   SET_CE_HIGH;            //  |CE goes HIGH // Chip disable
@@ -115,17 +155,16 @@ void writeValueEx (int adr, byte val) {
 }
 
 
-void unprotect() {
+void do_Unprotect() {
 // attention: test le 19 avril: le code pour les 28c64 semble OK aussi pour les 28C256 ???
   byte re= 0;
-  PRLN ("in_unprotect 28C256");
+  PRLN ("in_unprotect 28C64");
   SetPoortA_outputs();
   SET_OE_HIGH;
   SET_CE_HIGH;
   writeValueEx (0x1555, 0xAA);
   writeValueEx (0x0AAA, 0x55);
   writeValueEx (0x1555, 0x80);
-
   writeValueEx (0x1555, 0xAA);
   writeValueEx (0x0AAA, 0x55);
   writeValueEx (0x1555, 0x20);
@@ -133,6 +172,31 @@ void unprotect() {
   delay(20);
  // SetPoortA_inputs();
  // re= readValue(0);
+ // DX("adr 0 =",re);
+  SET_CE_LOW;
+}
+
+
+void do_Unprotect_2() {
+// attention: test le 19 avril: le code pour les 28c64 semble OK aussi pour les 28C256 ???
+  byte re= 0;
+  PRLN ("in_unprotect 28C256");
+  SetPoortA_outputs();
+  SET_OE_HIGH;
+  SET_CE_HIGH;
+
+  writeValueEx (0x5555, 0xAA);
+  writeValueEx (0x2AAA, 0x55);
+  writeValueEx (0x5555, 0x80);
+  writeValueEx (0x5555, 0xAA);
+  writeValueEx (0x2AAA, 0x55);
+  writeValueEx (0x5555, 0x20);
+  writeValueEx (0x0000, 0x00);
+ 
+  delay(20);
+   SetPoortA_inputs();
+  // re= readValue(0);
   DX("adr 0 =",re);
   SET_CE_LOW;
 }
+
